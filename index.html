@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAU Signal</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #C9A84C;
+    --gold-bright: #F0C040;
+    --gold-dim: #7A6020;
+    --bg: #0A0A08;
+    --bg2: #111109;
+    --bg3: #1A1A10;
+    --text: #E8E0C8;
+    --text-dim: #6B6550;
+    --red: #E05050;
+    --green: #50C878;
+    --border: #2A2A18;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.4;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 48px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+  }
+
+  .title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .subtitle {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .last-updated {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-align: right;
+    letter-spacing: 0.05em;
+  }
+
+  .last-updated span {
+    display: block;
+    color: var(--text);
+    font-size: 0.75rem;
+    margin-top: 2px;
+  }
+
+  /* Signal banner */
+  .signal-banner {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 28px 32px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.6s ease;
+  }
+
+  .signal-banner.spike {
+    border-color: var(--gold);
+    background: linear-gradient(135deg, #1A1500 0%, #0A0A08 60%);
+  }
+
+  .signal-banner.spike::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-bright), transparent);
+    animation: scan 3s linear infinite;
+  }
+
+  @keyframes scan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .signal-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .signal-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    transition: color 0.6s ease;
+  }
+
+  .signal-value.spike {
+    color: var(--gold-bright);
+    text-shadow: 0 0 40px rgba(240, 192, 64, 0.4);
+  }
+
+  .signal-conditions {
+    margin-top: 12px;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .condition-met { color: var(--green); }
+  .condition-fail { color: var(--text-dim); }
+
+  /* Metrics grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  @media (min-width: 600px) {
+    .grid { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  .metric-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 20px 18px;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+
+  .metric-card:hover { border-color: var(--gold-dim); }
+
+  .metric-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .metric-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: 0.05em;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .metric-change {
+    font-size: 0.7rem;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+
+  .metric-change.up { color: var(--green); }
+  .metric-change.down { color: var(--red); }
+  .metric-change.neutral { color: var(--text-dim); }
+
+  .metric-threshold {
+    font-size: 0.58rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Loading state */
+  .loading-bar {
+    height: 2px;
+    background: var(--border);
+    margin-bottom: 32px;
+    overflow: hidden;
+  }
+
+  .loading-bar-inner {
+    height: 100%;
+    background: var(--gold);
+    width: 0%;
+    transition: width 0.3s ease;
+    animation: loading 2s ease-in-out infinite;
+  }
+
+  @keyframes loading {
+    0% { width: 0%; margin-left: 0; }
+    50% { width: 60%; margin-left: 20%; }
+    100% { width: 0%; margin-left: 100%; }
+  }
+
+  .loading-bar-inner.done {
+    animation: none;
+    width: 100%;
+    background: var(--green);
+    transition: width 0.3s ease;
+  }
+
+  /* Error / status */
+  .status-bar {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot.error { background: var(--red); }
+  .dot.loading {
+    background: var(--gold);
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Note box */
+  .note {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 16px 20px;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+    letter-spacing: 0.03em;
+  }
+
+  .note strong { color: var(--gold-dim); }
+
+  /* Refresh button */
+  .refresh-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 16px;
+  }
+
+  .refresh-btn:hover {
+    border-color: var(--gold-dim);
+    color: var(--gold);
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg3) 25%, var(--border) 50%, var(--bg3) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div>
+      <div class="title">XAU SIGNAL</div>
+      <div class="subtitle">Gold Spike Probability Monitor</div>
+    </div>
+    <div class="last-updated">
+      LAST FETCH
+      <span id="update-time">—</span>
+    </div>
+  </div>
+
+  <div class="loading-bar"><div class="loading-bar-inner" id="load-bar"></div></div>
+
+  <div class="status-bar">
+    <div class="dot loading" id="status-dot"></div>
+    <span id="status-text">Fetching data...</span>
+  </div>
+
+  <!-- Signal Banner -->
+  <div class="signal-banner" id="signal-banner">
+    <div class="signal-label">Current Signal</div>
+    <div class="signal-value" id="signal-value">
+      <span class="skeleton" style="width:320px;height:2.5rem;">&nbsp;</span>
+    </div>
+    <div class="signal-conditions" id="signal-conditions"></div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="grid">
+    <div class="metric-card">
+      <div class="metric-label">XAU / USD</div>
+      <div class="metric-value" id="xau-price">—</div>
+      <div class="metric-change neutral" id="xau-change">—</div>
+      <div class="metric-threshold">Daily close</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Real Yield (10Y)</div>
+      <div class="metric-value" id="tips-val">—</div>
+      <div class="metric-change neutral" id="tips-change">—</div>
+      <div class="metric-threshold">Trigger: &lt; −0.3%</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">DXY (USD Index)</div>
+      <div class="metric-value" id="dxy-val">—</div>
+      <div class="metric-change neutral" id="dxy-change">—</div>
+      <div class="metric-threshold">Trigger: &lt; −1.0%</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">VIX</div>
+      <div class="metric-value" id="vix-val">—</div>
+      <div class="metric-change neutral" id="vix-change">—</div>
+      <div class="metric-threshold">Trigger: &gt; +10%</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Signal logic:</strong> "High Probability XAU Spike" fires when all 3 conditions are true simultaneously — real yield drops &gt;0.3%, DXY weakens &gt;1%, VIX spikes &gt;10%. Data via Yahoo Finance (free, no API key). Refreshes automatically each time you open this file.
+    <br><br>
+    <strong>Limitation:</strong> Yahoo Finance data has a 15-min delay on some instruments. Real yield proxy uses TIP ETF as a stand-in for TIPS when direct feed is unavailable.
+  </div>
+
+  <button class="refresh-btn" onclick="fetchAll()">↻ REFRESH NOW</button>
+
+</div>
+
+<script>
+// Tickers:
+// GC=F  — Gold Futures (XAU proxy)
+// ^TNX  — 10Y Treasury (nominal yield proxy, we approximate real yield via TIP ETF)
+// DX-Y.NYB — DXY
+// ^VIX  — CBOE VIX
+
+const PROXY = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+const PROXY2 = 'https://query2.finance.yahoo.com/v8/finance/chart/';
+
+async function fetchTicker(symbol) {
+  const url = `${PROXY}${encodeURIComponent(symbol)}?interval=1d&range=5d`;
+  const url2 = `${PROXY2}${encodeURIComponent(symbol)}?interval=1d&range=5d`;
+  try {
+    let res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) res = await fetch(url2, { mode: 'cors' });
+    const data = await res.json();
+    const closes = data.result[0].indicators.quote[0].close.filter(v => v !== null);
+    const prev = closes[closes.length - 2];
+    const curr = closes[closes.length - 1];
+    const pctChange = ((curr - prev) / prev) * 100;
+    return { curr, prev, pctChange };
+  } catch(e) {
+    return null;
+  }
+}
+
+function fmt(n, decimals = 2) {
+  if (n === null || n === undefined) return '—';
+  return n.toFixed(decimals);
+}
+
+function setChange(elId, pct, invertGood = false) {
+  const el = document.getElementById(elId);
+  if (pct === null || pct === undefined) { el.textContent = '—'; return; }
+  const sign = pct >= 0 ? '+' : '';
+  el.textContent = `${sign}${fmt(pct)}%`;
+  const isGood = invertGood ? pct < 0 : pct > 0;
+  el.className = `metric-change ${pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral'}`;
+}
+
+async function fetchAll() {
+  // Reset UI
+  document.getElementById('load-bar').classList.remove('done');
+  document.getElementById('status-dot').className = 'dot loading';
+  document.getElementById('status-text').textContent = 'Fetching data...';
+
+  const [xau, tip, dxy, vix] = await Promise.all([
+    fetchTicker('GC=F'),
+    fetchTicker('TIP'),     // TIP ETF as real yield proxy
+    fetchTicker('DX-Y.NYB'),
+    fetchTicker('^VIX')
+  ]);
+
+  // Check if we got anything
+  const failed = [xau, tip, dxy, vix].filter(v => v === null);
+
+  if (failed.length === 4) {
+    document.getElementById('status-dot').className = 'dot error';
+    document.getElementById('status-text').textContent = 'Data fetch failed. Yahoo Finance may be blocking requests. Try refreshing.';
+    document.getElementById('load-bar').classList.add('done');
+    document.getElementById('load-bar').style.background = 'var(--red)';
+    return;
+  }
+
+  // XAU
+  if (xau) {
+    document.getElementById('xau-price').textContent = `$${fmt(xau.curr, 0)}`;
+    setChange('xau-change', xau.pctChange);
+  }
+
+  // TIP (real yield proxy — TIP price UP = yields DOWN)
+  // We invert: if TIP pct > 0, real yield direction is negative
+  if (tip) {
+    const realYieldProxy = -tip.pctChange; // invert TIP price change
+    document.getElementById('tips-val').textContent = `${fmt(realYieldProxy)}%`;
+    const el = document.getElementById('tips-change');
+    el.textContent = realYieldProxy < -0.3 ? '✓ TRIGGER MET' : 'no trigger';
+    el.className = `metric-change ${realYieldProxy < -0.3 ? 'up' : 'neutral'}`;
+  }
+
+  // DXY
+  if (dxy) {
+    document.getElementById('dxy-val').textContent = fmt(dxy.curr, 1);
+    setChange('dxy-change', dxy.pctChange);
+    const el = document.getElementById('dxy-change');
+    if (dxy.pctChange < -1.0) {
+      el.textContent = `${fmt(dxy.pctChange)}% ✓ TRIGGER`;
+      el.className = 'metric-change down';
+    }
+  }
+
+  // VIX
+  if (vix) {
+    document.getElementById('vix-val').textContent = fmt(vix.curr, 1);
+    setChange('vix-change', vix.pctChange);
+    const el = document.getElementById('vix-change');
+    if (vix.pctChange > 10) {
+      el.textContent = `+${fmt(vix.pctChange)}% ✓ TRIGGER`;
+      el.className = 'metric-change up';
+    }
+  }
+
+  // Signal logic
+  const realYieldDrop = tip ? (-tip.pctChange < -0.3) : false;
+  const dxyWeak = dxy ? (dxy.pctChange < -1.0) : false;
+  const vixSpike = vix ? (vix.pctChange > 10) : false;
+  const isSpike = realYieldDrop && dxyWeak && vixSpike;
+
+  const conditionsMet = [realYieldDrop, dxyWeak, vixSpike].filter(Boolean).length;
+
+  const banner = document.getElementById('signal-banner');
+  const sigVal = document.getElementById('signal-value');
+  const sigCond = document.getElementById('signal-conditions');
+
+  sigVal.innerHTML = isSpike ? 'HIGH PROBABILITY XAU SPIKE' : 'NORMAL';
+  sigVal.className = `signal-value ${isSpike ? 'spike' : ''}`;
+  banner.className = `signal-banner ${isSpike ? 'spike' : ''}`;
+
+  const c = (met, label) =>
+    `<span class="${met ? 'condition-met' : 'condition-fail'}">${met ? '✓' : '○'} ${label}</span>`;
+
+  sigCond.innerHTML = [
+    c(realYieldDrop, 'Real yield &lt; −0.3%'),
+    c(dxyWeak, 'DXY &lt; −1.0%'),
+    c(vixSpike, 'VIX &gt; +10%')
+  ].join('&nbsp;&nbsp;·&nbsp;&nbsp;');
+
+  if (!isSpike && conditionsMet > 0) {
+    sigCond.innerHTML += `&nbsp;&nbsp;<span style="color:var(--gold-dim)">(${conditionsMet}/3 conditions met)</span>`;
+  }
+
+  // Update status
+  document.getElementById('load-bar').classList.add('done');
+  document.getElementById('status-dot').className = 'dot live';
+  document.getElementById('status-text').textContent =
+    failed.length > 0
+      ? `Live (${4 - failed.length}/4 instruments loaded)`
+      : 'Live · all instruments loaded';
+
+  const now = new Date();
+  document.getElementById('update-time').textContent =
+    now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+    ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Run on load
+fetchAll();
+</script>
+</body>
+</html>
